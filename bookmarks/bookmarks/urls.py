@@ -15,8 +15,14 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('account/', include('account.urls')),  # 为了保证 account:login 和 login 都可以被解析
+    path('account/', include('account.urls')),
 ]
+
+if settings.DEBUG:
+    # static 为媒体文件生成正确的url
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
