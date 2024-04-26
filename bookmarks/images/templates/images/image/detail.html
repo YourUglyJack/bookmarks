@@ -7,17 +7,25 @@
 {% block content %}
     <h1>{{ image.title }}</h1>
     <img src="{{ image.image.url }}" class="image-detail" alt="Lost">
-    {% with total_likes=image.users_like.count %}
+    {% with total_likes=image.users_like.count users_like=image.users_like.all %}
         <div class="image-info">
             <div>
                     <span class="count">
-                        {{ total_likes }} like{{ total_likes|pluralize }}
+                        <span class="total">{{ total_likes }} like{{ total_likes|pluralize }}</span>
                     </span>
+                <a href="#" data-id="{{ image.id }}" data-action="{% if request.user in users_like %}un{% endif %}like"
+                   class="like button">
+                    {% if request.user not in users_like %}
+                        Like
+                    {% else %}
+                        Unlike
+                    {% endif %}
+                </a>
             </div>
             {{ image.description|linebreaks }}
         </div>
         <div class="image-likes">
-            {% for user in image.users_like.all %}
+            {% for user in users_like %}
                 <div>
                     <img src="{{ user.profile.photo.url }}" alt="Lost">
                     <p>{{ user.first_name }}</p>
@@ -27,4 +35,53 @@
             {% endfor %}
         </div>
     {% endwith %}
+{% endblock %}
+
+{% block domready %}
+$('a.like').click(function handleLike(e) {
+    e.preventDefault();
+    // 在 AJAX 的回调函数中，this 不再指向触发事件的元素。因此，你需要在 AJAX 请求之前保存 this 的引用，然后在回调函数中使用这个引用
+    let $this = $(this);  // save reference to this
+
+    $this.off('click');  // Disable the link to prevent multiple concurrent req
+
+    $.post('{% url "images:like" %}', {
+        id: $(this).data('id'),  // pk of image
+        action: $(this).data('action') // like or unlike
+    }, function (data) { // ajax的回调函数
+        if (data["status"] === "ok") {
+            console.log('aaaa')
+            let pre_action = $this.data('action');
+            console.log('pre_action:' + pre_action)
+
+            // toggle data-action
+            $this.data('action', pre_action === 'like' ? 'unlike' : 'like');
+            console.log('cur_action:' + $this.data('action'))
+            // toggle link text
+            $this.text(pre_action === 'like' ? 'Unlike' : 'Like');
+            // update total likes
+            let pre_likes = parseInt($('span.count .total').text());
+            console.log('pre_likes:' + pre_likes)
+            let cur_likes = pre_action === 'like' ? pre_likes + 1 : pre_likes - 1
+            $('span.count .total').text(cur_likes > 1 ? cur_likes + ' likes' : cur_likes + ' like');
+            console.log('cur_likes:' + $('span.count .total').text());
+
+            // update users_like
+            let this_image_likes = $('.image-likes');
+            this_image_likes.empty();
+            if (data["users_like"].length === 0) {
+                this_image_likes.append('<p>Nobody likes this image yes</p>');
+            }else{
+                data["users_like"].forEach(function (user) {
+                    this_image_likes.append(
+                        '<div><img src="' + user.url + '" alt="Lost"><p>' + user.first_name + '</p></div>'
+                    )
+                });
+            }
+        }
+    }).always(function () {
+        // 在 AJAX 请求的 .always() 回调中（无论请求成功还是失败，这个回调都会被执行），我们使用 .on() 方法重新启用了链接的点击事件
+        $this.on('click', handleLike);
+    })
+})
 {% endblock %}

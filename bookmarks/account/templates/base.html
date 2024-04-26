@@ -15,7 +15,7 @@
                 <a href="{% url "dashboard" %}">My dashboard</a>
             </li>
             <li {% if section == "images" %} class="selected" {% endif %}>
-                <a href=#>Images</a>
+                <a href={% url "images:list" %}>Images</a>
             </li>
             <li {% if section == "people" %} class="selected" {% endif %}>
                 <a href=#>People</a>
@@ -46,5 +46,26 @@
     {% block content %}
     {% endblock %}
 </div>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/js-cookie@2.2.1/src/js.cookie.min.js"></script>
+<script>
+    let csrftoken = Cookies.get('csrftoken');
+    function csrfSafeMethod(method) {  // 用于检查http方法是否需要csrf保护，以下四种是安全的，因为只是获取服务器资源
+        // these http methods do not require csrf protection
+        return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));  // re: ^(GET|HEAD|OPTIONS|TRACE)$
+    }
+    $.ajaxSetup({  // 这个函数用于设置所有的AJAX请求
+        beforeSend: function (xhr, settings) {
+            if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                // settings.type 是一个字符串，表示 AJAX 请求的 HTTP 方法
+                // 跨域是指一个网页或者脚本尝试去请求另一个来源的资源。这里的"来源"定义为协议、域名和端口号的组合。如果这三者中的任何一个不同，就属于跨域
+                xhr.setRequestHeader("X-CSRFToken", csrftoken);
+            }
+        }
+    });
+    $(document).ready(function () {
+        {% block domready %}{% endblock %}
+    })
+</script>
 </body>
 </html>
